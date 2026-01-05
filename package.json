@@ -1,5 +1,5 @@
 {
-  "name": "gitsigns.nvim",
+  "name": "@softvisio/gitsigns.nvim",
   "private": true,
   "description": "Fork of gitsigns.nvim",
   "homepage": "https://github.com/softvisio/gitsigns.nvim",

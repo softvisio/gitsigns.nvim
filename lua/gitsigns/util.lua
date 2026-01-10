@@ -440,26 +440,50 @@ function M.cygpath(path, mode)
 
   async.schedule()
 
-  return assert(vim.split(stdout, '\n')[1])
+  local result = vim.split(stdout, '\n')[1]
+  -- Strip trailing newline/carriage return that may be present in cygpath output on MSYS2
+  if result then
+    result = result:match('^(.-)[\r\n]*$')
+  end
+
+  return assert(result)
 end
 
 --- Flattens a nested table structure into a flat array of strings. Only
 --- traverses numeric keys, recursively flattening tables and collecting
 --- strings.
---- @param x table<any,any> The input table to flatten.
---- @return string[] A flat array of strings extracted from the nested table.
+--- @param x table<integer,string|string[]?> The input table to flatten.
+--- @return string[] # A flat array of strings extracted from the nested table.
 function M.flatten(x)
   local ret = {} --- @type string[]
-  for k, v in pairs(x) do
-    if type(k) == 'number' then
-      if type(v) == 'table' then
-        vim.list_extend(ret, M.flatten(v))
-      elseif type(v) == 'string' then
-        ret[#ret + 1] = v
-      end
+  for i = 1, table.maxn(x) do
+    local v = x[i]
+    if type(v) == 'table' then
+      vim.list_extend(ret, M.flatten(v))
+    elseif type(v) == 'string' then
+      ret[#ret + 1] = v
+    elseif not v then
+      -- skip
+    else
+      error('Expected string, table, false or nil, got ' .. type(v))
     end
   end
   return ret
+end
+
+--- @param fn fun()
+--- @return userdata
+function M.gc_proxy(fn)
+  local proxy = newproxy(true)
+  getmetatable(proxy).__gc = fn
+  return proxy
+end
+
+--- @generic T
+--- @param x T
+--- @return {ref: T}
+function M.weak_ref(x)
+  return setmetatable({ ref = x }, { __mode = 'v' })
 end
 
 return M

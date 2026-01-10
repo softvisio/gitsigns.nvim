@@ -1,3 +1,4 @@
+--- @diagnostic disable: access-invisible
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
@@ -40,18 +41,18 @@ describe('gitdir_watcher', function()
     command('Gitsigns clear_debug')
     edit(test_file)
 
-    local revparse_pat = ('run_job: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
+    local revparse_pat = ('system.system: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
       '%-',
       '%%-'
     )
 
     match_debug_messages({
-      'attach(1): Attaching (trigger=BufReadPost)',
+      'attach.attach(1): Attaching (trigger=BufReadPost)',
       np(revparse_pat),
-      np('run_job: git .* config user.name'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      n('attach(1): Watching git dir'),
-      np('run_job: git .* show .*'),
+      np('system.system: git .* config user.name'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('attach%.attach%(1%): Watching git dir .*'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file }, get_bufs())
@@ -62,13 +63,13 @@ describe('gitdir_watcher', function()
     git('mv', test_file, test_file2)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      n('handle_moved(1): File moved to dummy.txt2'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      n('attach.handle_moved(1): File moved to dummy.txt2'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file2 }, get_bufs())
@@ -80,13 +81,13 @@ describe('gitdir_watcher', function()
     git('mv', test_file2, test_file3)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      n('handle_moved(1): File moved to dummy.txt3'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      n('attach.handle_moved(1): File moved to dummy.txt3'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file3 }, get_bufs())
@@ -96,14 +97,14 @@ describe('gitdir_watcher', function()
     git('mv', test_file3, test_file)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      n('handle_moved(1): Moved file reset'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      n('attach.handle_moved(1): Moved file reset'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file }, get_bufs())
@@ -140,5 +141,64 @@ describe('gitdir_watcher', function()
 
     helpers.check({ signs = {} }, b1)
     helpers.check({ signs = {} }, b2)
+  end)
+
+  it('garbage collects repo and watcher', function()
+    setup_test_repo()
+    helpers.setup_path()
+
+    local result = helpers.exec_lua(function(scratch)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo, err = async.run(Repo.get, scratch):wait(5000)
+      assert(repo, err)
+
+      local gitdir = repo.gitdir
+      local watcher = repo._watcher
+      local handle = watcher.handle
+
+      local function get_upvalue(fn, key)
+        for i = 1, 50 do
+          local name, value = debug.getupvalue(fn, i)
+          if not name then
+            break
+          end
+          if name == key then
+            return value
+          end
+        end
+      end
+
+      local repo_cache = get_upvalue(Repo.get, 'repo_cache')
+      assert(repo_cache, 'repo_cache not found')
+
+      local weak = setmetatable({ repo, watcher }, { __mode = 'v' })
+
+      --- @diagnostic disable-next-line: unused, assign-type-mismatch
+      --- assign to nil to allow gc
+      watcher, repo = nil, nil
+
+      vim.wait(2000, function()
+        collectgarbage('collect')
+
+        return weak[1] == nil
+          and weak[2] == nil
+          and repo_cache[gitdir] == nil
+          and handle:is_closing()
+      end, 20, false)
+
+      return {
+        repo_gced = weak[1] == nil,
+        watcher_gced = weak[2] == nil,
+        cache_cleared = repo_cache[gitdir] == nil,
+        handle_closed = handle:is_closing(),
+      }
+    end, helpers.scratch)
+
+    eq(true, result.repo_gced)
+    eq(true, result.watcher_gced)
+    eq(true, result.cache_cleared)
+    eq(true, result.handle_closed)
   end)
 end)

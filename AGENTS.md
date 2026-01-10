@@ -21,7 +21,7 @@
 
 - Lua code must have emmylua/LuaCATS type annotations
 - 2-space indentation, 100-character columns, single quotes for strings.
-- Run `make format` after changing any code
+- Run `make format` and `make emmylua-check` after changing any code
 
 ## Testing Guidelines
 

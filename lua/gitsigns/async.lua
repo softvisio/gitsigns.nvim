@@ -151,7 +151,7 @@ end
 ---   local result = task:wait() -- wait indefinitely
 --- ```
 --- @param timeout? integer Timeout in milliseconds
---- @return R... result
+--- @return R
 function Task:wait(timeout)
   local res = pack_len(self:pwait(timeout))
   local stat = res[1]
@@ -170,7 +170,7 @@ end
 function Task:_traceback(msg, _lvl)
   _lvl = _lvl or 0
 
-  local thread = ('[%s] '):format(self._thread)
+  local thread = ('[%s] '):format(tostring(self._thread))
 
   local child = self._current_child
   if getmetatable(child) == Task then

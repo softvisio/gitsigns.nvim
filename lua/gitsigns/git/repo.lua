@@ -339,6 +339,8 @@ function M:command(args, spec)
   spec = spec or {}
   spec.cwd = self.toplevel
 
+  local crypt = false
+
   local args0 = { '--git-dir', self.gitdir }
 
   if self.detached then
@@ -349,7 +351,28 @@ function M:command(args, spec)
 
   vim.list_extend(args0, args)
 
-  return git_command(args0, spec)
+  local lines, err, code = git_command(args0, spec)
+
+  -- decrypt content, encrypted by "git-crypt"
+  if lines and lines[1] and string.sub(lines[1], 1, 10) == '\0GITCRYPT\0' then
+    crypt = true
+
+    spec.stdin = table.concat(lines, '\n')
+
+    local args0 = { '--git-dir', self.gitdir }
+
+    if self.detached then
+      -- If detached, we need to set the work tree to the toplevel so that git
+      -- commands work correctly.
+      args0 = vim.list_extend(args0, { '--work-tree', self.toplevel })
+    end
+
+    vim.list_extend(args0, { 'crypt', 'smudge' })
+
+    lines, err, code = git_command(args0, spec)
+  end
+
+  return lines, err, code, crypt
 end
 
 --- @async
@@ -446,7 +469,7 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function M:get_show_text(object, encoding)
-  local stdout, stderr = self:command({ 'show', object }, { text = false, ignore_error = true })
+  local stdout, stderr, code, crypt = self:command({ 'show', object }, { text = false, ignore_error = true })
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     for i, l in ipairs(stdout) do
@@ -454,7 +477,7 @@ function M:get_show_text(object, encoding)
     end
   end
 
-  return stdout, stderr
+  return stdout, stderr, crypt
 end
 
 --- @async
@@ -465,7 +488,7 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function M:get_show_text_at_revision(revision, relpath, encoding)
-  local stdout, stderr = self:get_show_text(revision .. ':' .. relpath, encoding)
+  local stdout, stderr, crypt = self:get_show_text(revision .. ':' .. relpath, encoding)
 
   if
     stderr
@@ -479,11 +502,11 @@ function M:get_show_text_at_revision(revision, relpath, encoding)
       or self:log_rename_status(revision, relpath)
     if old_path then
       log.dprintf('found rename %s -> %s', old_path, relpath)
-      stdout, stderr = self:get_show_text(revision .. ':' .. old_path, encoding)
+      stdout, stderr, crypt = self:get_show_text(revision .. ':' .. old_path, encoding)
     end
   end
 
-  return stdout, stderr
+  return stdout, stderr, crypt
 end
 
 --- @async

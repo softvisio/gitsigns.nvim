@@ -1,5 +1,6 @@
 local cmdline = require('gitsigns.cli.context')
 local generated = require('gitsigns.cli.completion.generated')
+local config = require('gitsigns.config').config
 
 --- @class Gitsigns.GeneratedCompletionPositional
 --- @field name string
@@ -53,7 +54,7 @@ end
 local function complete_heads(arglead)
   --- @type string[]
   local all =
-    vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
+    vim.fn.systemlist({ config.git_cmd, 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
   return complete_matches(arglead, all)
 end
 

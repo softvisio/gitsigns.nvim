@@ -73,6 +73,7 @@ local validate = require('gitsigns.util').validate
 --- @class (exact) Gitsigns.Config
 --- @field package _config table<string,any> config store
 --- @field debug_mode boolean
+--- @field git_cmd string
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field diffthis Gitsigns.DiffthisOpts
 --- @field base? string
@@ -930,6 +931,14 @@ M.schema = {
     description = [[
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
+    ]],
+  },
+
+  git_cmd = {
+    type = 'string',
+    default = 'git',
+    description = [[
+      Specifies path or filename of the `git` executable to use.
     ]],
   },
 }

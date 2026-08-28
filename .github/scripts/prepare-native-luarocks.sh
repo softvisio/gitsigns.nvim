@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -S bash
 set -euo pipefail
 
 chmod +x "$GITHUB_WORKSPACE/.luarocks/bin/luarocks" \

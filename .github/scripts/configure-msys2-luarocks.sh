@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -S bash
 set -euo pipefail
 
 luarocks --lua-version=5.1 config variables.LUA /ucrt64/bin/luajit.exe

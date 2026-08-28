@@ -24,11 +24,11 @@ if ($status -ne 0) {
 New-Item -ItemType Directory -Force -Path $shimDir | Out-Null
 
 Set-Content -Path (Join-Path $shimDir 'luarocks') -Encoding utf8 -Value @'
-#!/usr/bin/env bash
+#!/usr/bin/env -S bash
 exec "$(dirname "$0")/../luarocks.bat" "$@"
 '@
 
 Set-Content -Path (Join-Path $shimDir 'luarocks-admin') -Encoding utf8 -Value @'
-#!/usr/bin/env bash
+#!/usr/bin/env -S bash
 exec "$(dirname "$0")/../luarocks-admin.bat" "$@"
 '@

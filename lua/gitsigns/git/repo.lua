@@ -793,6 +793,8 @@ end
 function M:ls_files(file)
   local has_eol = check_version(2, 9)
 
+  file = vim.fs.relpath(self.toplevel, file)
+
   -- --others + --exclude-standard means ignored files won't return info, but
   -- untracked files will. Unlike file_info_tree which won't return untracked
   -- files.

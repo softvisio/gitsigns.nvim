@@ -298,7 +298,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   self._gc = util.gc_proxy(function()
     self:close()
   end)
-  self.file = util.cygpath(file, 'unix')
+  self.file = file
   self.revision = revision
   self.encoding = encoding
 
